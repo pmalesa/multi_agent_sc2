@@ -18,3 +18,7 @@ dependencies:
   # GPU support
   # - cudatoolkit=11.8.0
   # - cudnn=9.3.0.75
+
+  - pip
+  - pip:
+    - git+https://github.com/oxwhirl/smacv2.git 

@@ -16,6 +16,12 @@ conda activate multi_agent_sc2_env
 conda env update --name multi_agent_sc2_env --file environment.yml --prune
 ```
 
+## StarCraft 2 Installation (Linux)
+```bash
+# Run the installation script
+./install_sc2.sh
+```
+
 ## Virtual Environment Removal
 ```bash
 # Deactivate the environment
