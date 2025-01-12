@@ -22,6 +22,16 @@ conda env update --name multi_agent_sc2_env --file environment.yml --prune
 ./install_sc2.sh
 ```
 
+## Run experiments
+```bash
+python main.py train --alg <algorithm> # dqn vdn or qmix 
+```
+
+## Run evaluation
+```bash
+python main.py test --alg <algorithm> # dqn vdn or qmix 
+```
+
 ## Virtual Environment Removal
 ```bash
 # Deactivate the environment

@@ -1,78 +1,45 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from os import replace
+import argparse
+import sys
 
-from smacv2.env import StarCraft2Env
-import numpy as np
-from absl import logging
-import time
+from scripts.run_experiment import run_experiment
+from scripts.evaluate import evaluate
 
-from smacv2.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
-
-logging.set_verbosity(logging.DEBUG)
-
-def main():
-    print("Running...")
-
-    distribution_config = {
-        "n_units": 5,
-        "n_enemies": 5,
-        "team_gen": {
-            "dist_type": "weighted_teams",
-            "unit_types": ["marine", "marauder", "medivac"],
-            "exception_unit_types": ["medivac"],
-            "weights": [0.45, 0.45, 0.1],
-            "observe": True,
-        },
-        "start_positions": {
-            "dist_type": "surrounded_and_reflect",
-            "p": 0.5,
-            "n_enemies": 5,
-            "map_x": 32,
-            "map_y": 32,
-        },
-    }
-
-    env = StarCraftCapabilityEnvWrapper(
-        capability_config = distribution_config,
-        map_name = "10gen_terran",
-        debug = True,
-        conic_fov = False,
-        obs_own_pos = True,
-        use_unit_ranges = True,
-        min_attack_range = 2,
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description = "Run SMACv2 experiments (train/test) with TorchRL-based DQN, VDN or QMIX."
     )
 
-    env_info = env.get_env_info()
-    n_actions = env_info["n_actions"]
-    n_agents = env_info["n_agents"]
-    n_episodes = 10    
+    subparsers = parser.add_subparsers(dest = "command", required = True)
 
-    print("Training episodes")
-    for e in range(n_episodes):
-        env.reset()
-        terminated = False
-        episode_reward = 0
+    train_parser = subparsers.add_parser("train", help = "Run training.")
+    train_parser.add_argument(
+        "--alg",
+        choices = ["dqn", "vdn", "qmix"],
+        default = "dqn",
+        help = "Which algorithm to run: DQN, VDN or QMIX."
+    )
 
-        while not terminated:
-            obs = env.get_obs()
-            state = env.get_state()
-            # env.render()
+    test_parser = subparsers.add_parser("test", help = "Run evaluation.")
+    test_parser.add_argument(
+        "--alg",
+        choices = ["dqn", "vdn", "qmix"],
+        default = "dqn",
+        help = "Which algorithm to test: DQN, VDN or QMIX"
+    )
 
-            actions = []
-            for agent_id in range(n_agents):
-                avail_actions = env.get_avail_agent_actions(agent_id)
-                avail_actions_ind = np.nonzero(avail_actions)[0]
-                action = np.random.choice(avail_actions_ind)
-                actions.append(action)
+    return parser.parse_args()
 
-            reward, terminated, _ = env.step(actions)
-            time.sleep(0.15)
-            episode_reward += reward
-        print(f"Total reward in episode {e} = {episode_reward}")
+def main():
+    args = parse_args()
+    config_path = f"configs/{args.alg}.yaml"
+    checkpoint_path = f"checkpoints/{args.alg}_checkpoint.pth"
 
-    print("Finished.")
+    if args.command == "train":
+        print(f"Running training of {args.alg} algorithm...")
+        run_experiment(args.alg, config_path)
+    elif args.command == "test":
+        print(f"Running evaluation of {args.alg} algorithm...")
+        evaluate(args.alg, config_path, checkpoint_path)
 
 if __name__ == "__main__":
     main()
