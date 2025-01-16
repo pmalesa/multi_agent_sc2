@@ -7,8 +7,10 @@ from smacv2.env import StarCraft2Env
 import numpy as np
 from absl import logging
 import time
-
+import torch
+from tensordict import TensorDict
 from smacv2.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
+from qmix_vdn_models import QMIX_VDN
 
 logging.set_verbosity(logging.DEBUG)
 
@@ -47,29 +49,52 @@ def main():
     env_info = env.get_env_info()
     n_actions = env_info["n_actions"]
     n_agents = env_info["n_agents"]
-    n_episodes = 10    
+    n_episodes = 10
+
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    alg_settings = {"device" : device, "alg": "vdn", "minibatch": 200, "gamma": 0.9, "tau": 0.005}
+    alg = QMIX_VDN(env_info, alg_settings)
 
     print("Training episodes")
     for e in range(n_episodes):
         env.reset()
         terminated = False
         episode_reward = 0
-
+        reward = 0
+        next_obs = torch.tensor(np.array(env.get_obs())).to(device)
+        next_state = torch.tensor(np.array(env.get_state())).to(device)
         while not terminated:
-            obs = env.get_obs()
-            state = env.get_state()
-            # env.render()
+            obs = next_obs
+            state = next_state
+            #env.render()
 
-            actions = []
+            actions = alg.qnet_explore(obs)[2]
             for agent_id in range(n_agents):
                 avail_actions = env.get_avail_agent_actions(agent_id)
                 avail_actions_ind = np.nonzero(avail_actions)[0]
-                action = np.random.choice(avail_actions_ind)
-                actions.append(action)
-
-            reward, terminated, _ = env.step(actions)
+                if avail_actions[0] == 1:
+                    actions[agent_id] = 0
+                elif actions[agent_id].to('cpu') not in avail_actions_ind:
+                    actions[agent_id] = 1
+            reward, terminated, a = env.step(actions)
+            obs = torch.tensor(np.array(env.get_obs()))
+            state = torch.tensor(np.array(env.get_state()))
+            td = TensorDict({
+                "agents": TensorDict({"observation": obs}),
+                "state": state,
+                "next": TensorDict({
+                    "agents": TensorDict({"observation": obs}),
+                    "state": state,
+                    "reward": reward,
+                    "done": a["battle_won"],
+                    "terminated": terminated and not a["battle_won"]
+                })
+            })
+            alg.replay_buffer.extend(td.reshape(-1))
             time.sleep(0.15)
             episode_reward += reward
+
+
         print(f"Total reward in episode {e} = {episode_reward}")
 
     print("Finished.")
