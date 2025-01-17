@@ -45,8 +45,9 @@ class QMIX_VDN:
                 ("agents", "action_value"),
                 ("agents", "chosen_action_value"),
             ],
+            action_mask_key="mask",
             action_space='categorical',
-            spec=Categorical(env_settings["n_agents"])
+            # spec=Categorical(env_settings["n_agents"])
         )
         self.qnet = SafeSequential(module, value_module)
 
@@ -56,19 +57,20 @@ class QMIX_VDN:
                 eps_init=0.3,
                 eps_end=0,
                 action_key=("agents", "action"),
-                spec=Categorical(env_settings["n_agents"])
+                spec=Categorical(env_settings["n_actions"]),
+                action_mask_key="mask",
             ),
         )
 
         if alg_settings["alg"] == "qmix":
             self.mixer = TensorDictModule(
                 module=QMixer(
-                    state_shape=env_settings["state_shape"],
+                    state_shape=(env_settings["state_shape"],),
                     mixing_embed_dim=32,
                     n_agents=env_settings["n_agents"],
                     device=alg_settings["device"],
                 ),
-                in_keys=[("agents", "chosen_action_value"), ("agents", "observation")],
+                in_keys=[("agents", "chosen_action_value"), "state"],
                 out_keys=["chosen_action_value"],
             )
         elif alg_settings["alg"] == "vdn":
@@ -90,7 +92,7 @@ class QMIX_VDN:
         )
 
 
-        self.loss_module = QMixerLoss(self.qnet, self.mixer, delay_value=True)
+        self.loss_module = QMixerLoss(self.qnet, self.mixer, delay_value=True, action_space='categorical')
         self.loss_module.set_keys(
             action_value=("agents", "action_value"),
             local_value=("agents", "chosen_action_value"),

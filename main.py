@@ -49,11 +49,13 @@ def main():
     env_info = env.get_env_info()
     n_actions = env_info["n_actions"]
     n_agents = env_info["n_agents"]
-    n_episodes = 10
+    n_episodes = 200
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    alg_settings = {"device" : device, "alg": "vdn", "minibatch": 200, "gamma": 0.9, "tau": 0.005}
+    alg_settings = {"device" : device, "alg": "qmix", "minibatch": 200, "gamma": 0.9, "tau": 0.005}
     alg = QMIX_VDN(env_info, alg_settings)
+    lr = 5e-5
+    optim = torch.optim.Adam(alg.loss_module.parameters(), lr)
 
     print("Training episodes")
     for e in range(n_episodes):
@@ -63,36 +65,51 @@ def main():
         reward = 0
         next_obs = torch.tensor(np.array(env.get_obs())).to(device)
         next_state = torch.tensor(np.array(env.get_state())).to(device)
+        obs = next_obs
+        state = next_state
+        td = TensorDict({
+        "agents": TensorDict({"observation": obs},env_info["n_agents"]),
+        "state": state,
+        "next": TensorDict({
+            "agents": TensorDict({"observation": obs}),
+            "state": state,
+            "reward": 0*torch.ones(1),
+            "done": (0)*torch.ones(1,dtype=torch.bool),
+            "terminated": (0)*torch.ones(1,dtype=torch.bool)
+        })
+        })
+
         while not terminated:
             obs = next_obs
             state = next_state
             #env.render()
+            avail_actions = env.get_avail_actions()
+            td.set("mask", torch.BoolTensor(avail_actions).to(device)) 
+            actions = alg.qnet_explore(td)["agents"]["action"]
 
-            actions = alg.qnet_explore(obs)[2]
-            for agent_id in range(n_agents):
-                avail_actions = env.get_avail_agent_actions(agent_id)
-                avail_actions_ind = np.nonzero(avail_actions)[0]
-                if avail_actions[0] == 1:
-                    actions[agent_id] = 0
-                elif actions[agent_id].to('cpu') not in avail_actions_ind:
-                    actions[agent_id] = 1
             reward, terminated, a = env.step(actions)
-            obs = torch.tensor(np.array(env.get_obs()))
-            state = torch.tensor(np.array(env.get_state()))
-            td = TensorDict({
-                "agents": TensorDict({"observation": obs}),
-                "state": state,
-                "next": TensorDict({
-                    "agents": TensorDict({"observation": obs}),
-                    "state": state,
-                    "reward": reward,
-                    "done": a["battle_won"],
-                    "terminated": terminated and not a["battle_won"]
-                })
-            })
+            next_obs = torch.tensor(np.array(env.get_obs())).to(device)
+            next_state = torch.tensor(np.array(env.get_state())).to(device)
+            td.set(("agents","observation"), obs) 
+            td.set("state", state)
+            td.set(("next","agents","observation"), next_obs)
+            td.set(("next","state"), next_state)
+            td.set("reward", reward*torch.ones(1))
+            td.set("done", (a["battle_won"])*torch.ones(1,dtype=torch.bool))
+            td.set("terminated", (terminated and not a["battle_won"])*torch.ones(1,dtype=torch.bool))
+            td.set(("next","mask"), torch.BoolTensor(avail_actions).to(device))
+
             alg.replay_buffer.extend(td.reshape(-1))
+            subdata = alg.replay_buffer.sample()
+            loss_vals = alg.loss_module(subdata)
+            loss_value = loss_vals["loss"]
+            loss_value.backward()
+            optim.step()
+            optim.zero_grad()
+            alg.target_net_updater.step()
             time.sleep(0.15)
             episode_reward += reward
+            
 
 
         print(f"Total reward in episode {e} = {episode_reward}")
