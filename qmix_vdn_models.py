@@ -55,9 +55,10 @@ class QMIX_VDN:
             self.qnet,
             EGreedyModule(
                 eps_init=0.3,
-                eps_end=0,
+                eps_end=0.1,
                 action_key=("agents", "action"),
                 spec=Categorical(env_settings["n_actions"]),
+                annealing_num_steps=8000/2*50,
                 action_mask_key="mask",
             ),
         )
@@ -86,7 +87,7 @@ class QMIX_VDN:
             raise ValueError("Mixer type not in the example")
 
         self.replay_buffer = TensorDictReplayBuffer(
-            storage=LazyTensorStorage(4000, device=alg_settings["device"]),
+            storage=LazyTensorStorage(10000, device=alg_settings["device"]),
             sampler=SamplerWithoutReplacement(),
             batch_size=alg_settings["minibatch"],
         )

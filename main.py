@@ -12,7 +12,7 @@ from tensordict import TensorDict
 from smacv2.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
 from qmix_vdn_models import QMIX_VDN
 
-logging.set_verbosity(logging.DEBUG)
+# logging.set_verbosity(logging.DEBUG)
 
 def main():
     print("Running...")
@@ -24,7 +24,7 @@ def main():
             "dist_type": "weighted_teams",
             "unit_types": ["marine", "marauder", "medivac"],
             "exception_unit_types": ["medivac"],
-            "weights": [0.45, 0.45, 0.1],
+            "weights": [0.5, 0.5, 0],
             "observe": True,
         },
         "start_positions": {
@@ -49,7 +49,7 @@ def main():
     env_info = env.get_env_info()
     n_actions = env_info["n_actions"]
     n_agents = env_info["n_agents"]
-    n_episodes = 200
+    n_episodes = 10000
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     alg_settings = {"device" : device, "alg": "qmix", "minibatch": 200, "gamma": 0.9, "tau": 0.005}
@@ -78,7 +78,7 @@ def main():
             "terminated": (0)*torch.ones(1,dtype=torch.bool)
         })
         })
-
+        i = 0
         while not terminated:
             obs = next_obs
             state = next_state
@@ -95,24 +95,29 @@ def main():
             td.set(("next","agents","observation"), next_obs)
             td.set(("next","state"), next_state)
             td.set("reward", reward*torch.ones(1))
-            td.set("done", (a["battle_won"])*torch.ones(1,dtype=torch.bool))
-            td.set("terminated", (terminated and not a["battle_won"])*torch.ones(1,dtype=torch.bool))
+            td.set("done", (terminated)*torch.ones(1,dtype=torch.bool))
+            td.set("terminated", (terminated)*torch.ones(1,dtype=torch.bool))
             td.set(("next","mask"), torch.BoolTensor(avail_actions).to(device))
 
             alg.replay_buffer.extend(td.reshape(-1))
+            i +=1
+            episode_reward += reward
+        
+        loss =0
+        for _ in range(50):
             subdata = alg.replay_buffer.sample()
             loss_vals = alg.loss_module(subdata)
             loss_value = loss_vals["loss"]
+            loss += loss_value.item()
             loss_value.backward()
             optim.step()
             optim.zero_grad()
             alg.target_net_updater.step()
-            time.sleep(0.15)
-            episode_reward += reward
+        print(f'{loss}  episode{e} reward {episode_reward}')
+
             
-
-
-        print(f"Total reward in episode {e} = {episode_reward}")
+        # print(f"Total reward in episode {e} = {episode_reward}")
+        # print(i)
 
     print("Finished.")
 
