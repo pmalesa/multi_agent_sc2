@@ -3,7 +3,6 @@ from __future__ import division
 from __future__ import print_function
 from os import replace
 
-from smacv2.env import StarCraft2Env
 import numpy as np
 from absl import logging
 import time
@@ -11,7 +10,7 @@ import torch
 from tensordict import TensorDict
 from smacv2.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
 from qmix_vdn_models import QMIX_VDN
-
+from torch.nn.utils import clip_grad_norm_
 # logging.set_verbosity(logging.DEBUG)
 
 def main():
@@ -24,7 +23,7 @@ def main():
             "dist_type": "weighted_teams",
             "unit_types": ["marine", "marauder", "medivac"],
             "exception_unit_types": ["medivac"],
-            "weights": [0.5, 0.5, 0],
+            "weights": [0.45, 0.45, 0.1],
             "observe": True,
         },
         "start_positions": {
@@ -44,20 +43,22 @@ def main():
         obs_own_pos = True,
         use_unit_ranges = True,
         min_attack_range = 2,
+        reward_only_positive = True
     )
 
+    
     env_info = env.get_env_info()
     n_actions = env_info["n_actions"]
     n_agents = env_info["n_agents"]
     n_episodes = 10000
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    alg_settings = {"device" : device, "alg": "qmix", "minibatch": 200, "gamma": 0.9, "tau": 0.005}
+    alg_settings = {"device" : device, "alg": "qmix", "minibatch": 1000, "gamma": 0.9, "tau": 0.005}
     alg = QMIX_VDN(env_info, alg_settings)
-    lr = 5e-5
+    lr = 1e-3
     optim = torch.optim.Adam(alg.loss_module.parameters(), lr)
-
     print("Training episodes")
+    
     for e in range(n_episodes):
         env.reset()
         terminated = False
@@ -82,11 +83,12 @@ def main():
         while not terminated:
             obs = next_obs
             state = next_state
-            #env.render()
+            # env.render(None)
             avail_actions = env.get_avail_actions()
-            td.set("mask", torch.BoolTensor(avail_actions).to(device)) 
+            td.set("mask", torch.BoolTensor(avail_actions).to(device))
+            td.set("i", i) 
             actions = alg.qnet_explore(td)["agents"]["action"]
-
+            # td = td.clone().detach()
             reward, terminated, a = env.step(actions)
             next_obs = torch.tensor(np.array(env.get_obs())).to(device)
             next_state = torch.tensor(np.array(env.get_state())).to(device)
@@ -94,26 +96,30 @@ def main():
             td.set("state", state)
             td.set(("next","agents","observation"), next_obs)
             td.set(("next","state"), next_state)
-            td.set("reward", reward*torch.ones(1))
-            td.set("done", (terminated)*torch.ones(1,dtype=torch.bool))
-            td.set("terminated", (terminated)*torch.ones(1,dtype=torch.bool))
+            td.set(("next","reward"), reward*torch.ones(1))
+            td.set(("next","done"), (terminated)*torch.ones(1,dtype=torch.bool))
+            td.set(("next","terminated"), (terminated)*torch.ones(1,dtype=torch.bool))
             td.set(("next","mask"), torch.BoolTensor(avail_actions).to(device))
-
+            
+            
             alg.replay_buffer.extend(td.reshape(-1))
             i +=1
+            loss =0
+            if e>=50:
+                subdata = alg.replay_buffer.sample()
+                loss_vals = alg.loss_module(subdata)
+                loss_value = loss_vals["loss"]
+                loss += loss_value.item()
+                loss_value.backward()
+                clip_grad_norm_(alg.loss_module.parameters(),10)
+                optim.step()
+                optim.zero_grad()
             episode_reward += reward
-        
-        loss =0
-        for _ in range(50):
-            subdata = alg.replay_buffer.sample()
-            loss_vals = alg.loss_module(subdata)
-            loss_value = loss_vals["loss"]
-            loss += loss_value.item()
-            loss_value.backward()
-            optim.step()
-            optim.zero_grad()
+
+        if (e+1)%100==0:
             alg.target_net_updater.step()
         print(f'{loss}  episode{e} reward {episode_reward}')
+
 
             
         # print(f"Total reward in episode {e} = {episode_reward}")

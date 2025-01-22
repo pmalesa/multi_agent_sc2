@@ -1,21 +1,13 @@
 from __future__ import annotations
 
-import time
-
-import hydra
-import torch
 
 from tensordict.nn import TensorDictModule, TensorDictSequential
 from torch import nn
 from torchrl.data import Categorical
 from torchrl._utils import logger as torchrl_logger
-from torchrl.collectors import SyncDataCollector
 from torchrl.data import TensorDictReplayBuffer
 from torchrl.data.replay_buffers.samplers import SamplerWithoutReplacement
 from torchrl.data.replay_buffers.storages import LazyTensorStorage
-from torchrl.envs import RewardSum, TransformedEnv
-from torchrl.envs.libs.vmas import VmasEnv
-from torchrl.envs.utils import ExplorationType, set_exploration_type
 from torchrl.modules import EGreedyModule, QValueModule, SafeSequential
 from torchrl.modules.models.multiagent import MultiAgentMLP, QMixer, VDNMixer
 from torchrl.objectives import SoftUpdate, ValueEstimators
@@ -54,11 +46,11 @@ class QMIX_VDN:
         self.qnet_explore = TensorDictSequential(
             self.qnet,
             EGreedyModule(
-                eps_init=0.3,
-                eps_end=0.1,
+                eps_init=1.0,
+                eps_end=0.05,
                 action_key=("agents", "action"),
                 spec=Categorical(env_settings["n_actions"]),
-                annealing_num_steps=8000/2*50,
+                annealing_num_steps=3000/2*50,
                 action_mask_key="mask",
             ),
         )
@@ -87,7 +79,7 @@ class QMIX_VDN:
             raise ValueError("Mixer type not in the example")
 
         self.replay_buffer = TensorDictReplayBuffer(
-            storage=LazyTensorStorage(10000, device=alg_settings["device"]),
+            storage=LazyTensorStorage(50000, device=alg_settings["device"]),
             sampler=SamplerWithoutReplacement(),
             batch_size=alg_settings["minibatch"],
         )
