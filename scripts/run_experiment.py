@@ -43,6 +43,7 @@ def run_experiment(alg: str, config_path: str):
             obs = env.reset()
             done = False
             episode_reward = 0
+            loss = 0.0
 
             while not done:
                 obs = env.get_obs()         # shape: [n_agents, observation_length]
@@ -69,8 +70,9 @@ def run_experiment(alg: str, config_path: str):
                 # Store experience
                 dqn_agent.store_experience(aggregated_obs, actions, reward, aggregated_next_obs, done)
 
-            # Update the agent after each episode
-            loss = dqn_agent.update()
+                # Update the agent after each episode
+                if episode > 50:
+                    loss = dqn_agent.update()
 
             # ---------- SAVE REWARDS ----------
             print(f"Episode {episode}: total_reward = {episode_reward}")

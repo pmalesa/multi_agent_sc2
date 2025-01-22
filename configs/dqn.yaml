@@ -1,23 +1,23 @@
 env:
   # SMACv2 environment configuration params
   distribution_config:
-    n_units: 10
-    n_enemies: 10
+    n_units: 5
+    n_enemies: 5
     team_gen:
       dist_type: weighted_teams
-      # unit_types: ["marine", "marauder", "medivac"]
-      unit_types: ["stalker", "zealot", "colossus"]
+      unit_types: ["marine", "marauder", "medivac"]
+      # unit_types: ["stalker", "zealot", "colossus"]
       exception_unit_types: ["medivac"]
       weights: [1.0, 0.0, 0.0]
       observe: true
     start_positions:
       dist_type: surrounded_and_reflect
       p: 0.5
-      n_enemies: 10
+      n_enemies: 5
       map_x: 32
       map_y: 32
-  # map_name: "10gen_terran"
-  map_name: "10gen_protoss"
+  map_name: "10gen_terran"
+  # map_name: "10gen_protoss"
   debug: true
   conic_fov: false
   obs_own_pos: true
@@ -33,7 +33,7 @@ agent:
   gamma: 0.99                   # Discount factor
   epsilon_start: 0.5            # Initial epsilon for epsilon-greedy policy
   epsilon_end: 0.05             # Final epsilon after decay
-  epsilon_decay: 5000           # Steps over which epsilon is decayed
+  epsilon_decay: 250000         # Steps over which epsilon is decayed (avg_steps * n_episodes/2)
   buffer_size: 50000            # Max size of the replay buffer
   batch_size: 256               # Batch size for training
   target_update_interval: 100   # Number of steps after which weights are copied to the target network
