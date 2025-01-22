@@ -53,12 +53,13 @@ def main():
     n_episodes = 10000
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    alg_settings = {"device" : device, "alg": "qmix", "minibatch": 1000, "gamma": 0.9, "tau": 0.005}
+    alg_settings = {"device" : device, "alg": "qmix", "minibatch": 256, "gamma": 0.9, "tau": 0.005}
     alg = QMIX_VDN(env_info, alg_settings)
     lr = 1e-3
     optim = torch.optim.Adam(alg.loss_module.parameters(), lr)
     print("Training episodes")
-    
+
+    i = 0
     for e in range(n_episodes):
         env.reset()
         terminated = False
@@ -79,16 +80,14 @@ def main():
             "terminated": (0)*torch.ones(1,dtype=torch.bool)
         })
         })
-        i = 0
+
         while not terminated:
             obs = next_obs
             state = next_state
             # env.render(None)
             avail_actions = env.get_avail_actions()
             td.set("mask", torch.BoolTensor(avail_actions).to(device))
-            td.set("i", i) 
             actions = alg.qnet_explore(td)["agents"]["action"]
-            # td = td.clone().detach()
             reward, terminated, a = env.step(actions)
             next_obs = torch.tensor(np.array(env.get_obs())).to(device)
             next_state = torch.tensor(np.array(env.get_state())).to(device)
@@ -100,8 +99,7 @@ def main():
             td.set(("next","done"), (terminated)*torch.ones(1,dtype=torch.bool))
             td.set(("next","terminated"), (terminated)*torch.ones(1,dtype=torch.bool))
             td.set(("next","mask"), torch.BoolTensor(avail_actions).to(device))
-            
-            
+              
             alg.replay_buffer.extend(td.reshape(-1))
             i +=1
             loss =0
@@ -116,8 +114,8 @@ def main():
                 optim.zero_grad()
             episode_reward += reward
 
-        if (e+1)%100==0:
-            alg.target_net_updater.step()
+            if (i)%100==0:
+                alg.target_net_updater.step()
         print(f'{loss}  episode{e} reward {episode_reward}')
 
 
