@@ -12,7 +12,20 @@ def evaluate(alg: str, config_path: str, checkpoint_path: str):
 
     if alg == "dqn":
         # agent = DQNAgent(**config["agent"])
-        pass
+        # agent.load(checkpoint_path)
+
+        n_eval_episodes = config["evaluation"]["episodes"]
+        for episode in range(n_eval_episodes):
+            obs = env.reset()
+            done = False
+            episode_reward = 0
+
+            while not done:
+                # ...
+                pass
+
+            print(f"[EVAL] Episode {episode}: {episode_reward}")
+
     elif alg == "vdn":
         # agent = VDNAgent(**config["agent"])
         pass
@@ -22,19 +35,6 @@ def evaluate(alg: str, config_path: str, checkpoint_path: str):
     else:
         raise ValueError(f"Unknown algorithm: {alg}")
     
-    # agent.load(checkpoint_path)
-
-    n_eval_episodes = config["evaluation"]["episodes"]
-    for episode in range(n_eval_episodes):
-        obs = env.reset()
-        done = False
-        episode_reward = 0
-
-        while not done:
-            # ...
-            pass
-
-        print(f"[EVAL] Episode {episode}: {episode_reward}")
 
     env.close()
     print(f"Evaluation complete.")
