@@ -43,13 +43,14 @@ def run_experiment(alg: str, config_path: str):
             obs = env.reset()
             done = False
             episode_reward = 0
-            loss = 0.0
+            losses = []
 
             while not done:
                 obs = env.get_obs()         # shape: [n_agents, observation_length]
                 aggregated_obs = np.concatenate(obs, axis = 0)
                 state = env.get_state()     
                 aggregated_obs = np.concatenate([state, aggregated_obs], axis = 0)
+                loss = 0.0
 
                 # Retrieve all action masks
                 action_masks = [env.get_avail_agent_actions(agent_id) for agent_id in range(n_agents)]
@@ -73,14 +74,18 @@ def run_experiment(alg: str, config_path: str):
                 # Update the agent after each episode
                 if episode > 50:
                     loss = dqn_agent.update()
+                    if loss is not None:
+                        losses.append(loss)
+
+            avg_loss = np.mean(losses) if losses else 0.0
 
             # ---------- SAVE REWARDS ----------
-            print(f"Episode {episode}: total_reward = {episode_reward}")
+            print(f"Episode {episode}: total_reward = {episode_reward}, avg_loss = {avg_loss}")
             with open(rewards_file, 'a') as file:
                 file.write(f"{episode_reward}\n")
             # ---------- SAVE LOSS ----------
             with open(loss_file, 'a') as file:
-                file.write(f"{loss}\n")
+                file.write(f"{avg_loss}\n")
             # -------------------------------
         
         # Save model

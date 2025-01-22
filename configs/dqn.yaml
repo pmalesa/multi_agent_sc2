@@ -34,7 +34,7 @@ agent:
   epsilon_start: 0.5            # Initial epsilon for epsilon-greedy policy
   epsilon_end: 0.05             # Final epsilon after decay
   epsilon_decay: 250000         # Steps over which epsilon is decayed (avg_steps * n_episodes/2)
-  buffer_size: 50000            # Max size of the replay buffer
+  buffer_size: 5000             # Max size of the replay buffer
   batch_size: 256               # Batch size for training
   target_update_interval: 100   # Number of steps after which weights are copied to the target network
   device: "cuda"                # "cpu" or "cuda" for GPU
