@@ -1,7 +1,7 @@
 #!/bin/bash
 # Install SC2 and add the custom maps
 
-if [ -z "$EXP_DIR" ]
+if [ -z "$EXP_DIR" ];
 then
     EXP_DIR=~
 fi

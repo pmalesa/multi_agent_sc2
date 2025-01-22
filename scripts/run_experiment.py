@@ -7,15 +7,19 @@ import matplotlib.pyplot as plt
 
 from envs.smacv2_env import make_smacv2_env
 from algorithms.dqn import DQNAgent
-# from algorithms.vdn_qmix import VDNAgent, QMIXAgent
+from algorithms.qmix_vdn import QMIX_VDN
+from absl import logging
+from tensordict import TensorDict
+from torch.nn.utils import clip_grad_norm_
 
 def run_experiment(alg: str, config_path: str):
     # Initialization of the training environment
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
 
-    rewards_file = f"{alg}_rewards.txt"
-    loss_file = f"{alg}_loss.txt"
+    os.makedirs("results", exist_ok = True)
+    rewards_file = f"results/{alg}_rewards.txt"
+    loss_file = f"results/{alg}_loss.txt"
     with open(rewards_file, 'w') as file:
         pass
     with open(loss_file, 'w') as file:
@@ -24,13 +28,6 @@ def run_experiment(alg: str, config_path: str):
     env = make_smacv2_env(**config["env"])
     env_info = env.get_env_info()
 
-    n_agents = env_info["n_agents"]
-    n_episodes = config["training"]["episodes"]
-    config["agent"]["state_dim"] = len(env.get_state())
-    config["agent"]["obs_dim"] = env_info["obs_shape"] 
-    config["agent"]["n_actions"] = env_info["n_actions"]
-    config["agent"]["n_agents"] = n_agents
-
     device = config["agent"].get("device", "cpu")
     if device == "cuda" and not torch.cuda.is_available():
         config["agent"]["device"] = "cpu"
@@ -38,7 +35,15 @@ def run_experiment(alg: str, config_path: str):
 
     # Training process
     if alg == "dqn":
+        n_agents = env_info["n_agents"]
+        n_episodes = config["training"]["episodes"]
+        config["agent"]["state_dim"] = len(env.get_state())
+        config["agent"]["obs_dim"] = env_info["obs_shape"] 
+        config["agent"]["n_actions"] = env_info["n_actions"]
+        config["agent"]["n_agents"] = n_agents
+
         dqn_agent = DQNAgent(**config["agent"])
+
         for episode in range(1, n_episodes + 1):
             obs = env.reset()
             done = False
@@ -95,17 +100,107 @@ def run_experiment(alg: str, config_path: str):
         dqn_agent.save(model_save_path)
         print(f"Model saved to {model_save_path}")
 
-    elif alg == "vdn":
-        # agent = VDNAgent(**config["agent"])
-        pass
-    elif alg == "qmix":
-        # agent = QMIXAgent(**config["agent"])
-        pass
+    elif alg in ["vdn", "qmix"]: 
+        env_info = env.get_env_info()
+        n_actions = env_info["n_actions"]
+        n_agents = env_info["n_agents"]
+        lr = config["agent"]["learning_rate"]
+        batch_size = config["agent"]["batch_size"]
+        gamma = config["agent"]["gamma"]
+        target_update_interval = config["agent"]["target_update_interval"]
+        n_episodes = config["training"]["episodes"]
+
+        alg_settings = {"device" : device, "alg": alg, "minibatch": batch_size, "gamma": gamma, "tau": 0.005}
+        qmix_vdn_agent = QMIX_VDN(env_info, alg_settings)
+
+        optim = torch.optim.Adam(qmix_vdn_agent.loss_module.parameters(), lr)
+
+        i = 0
+        for e in range(n_episodes):
+            env.reset()
+            terminated = False
+            episode_reward = 0
+            reward = 0
+            next_obs = torch.tensor(np.array(env.get_obs())).to(device)
+            next_state = torch.tensor(np.array(env.get_state())).to(device)
+            obs = next_obs
+            state = next_state
+            losses = []
+            td = TensorDict({
+                "agents": TensorDict({"observation": obs}, env_info["n_agents"]),
+                "state": state,
+                "next": TensorDict({
+                    "agents": TensorDict({"observation": obs}),
+                    "state": state,
+                    "reward": 0 * torch.ones(1),
+                    "done": (0) * torch.ones(1, dtype = torch.bool),
+                    "terminated": (0) * torch.ones(1, dtype = torch.bool)
+                })
+            })
+
+            while not terminated:
+                obs = next_obs
+                state = next_state
+                # env.render(None)
+                avail_actions = env.get_avail_actions()
+                td.set("mask", torch.BoolTensor(avail_actions).to(device))
+                actions = qmix_vdn_agent.qnet_explore(td)["agents"]["action"]
+                reward, terminated, a = env.step(actions)
+                next_obs = torch.tensor(np.array(env.get_obs())).to(device)
+                next_state = torch.tensor(np.array(env.get_state())).to(device)
+                td.set(("agents", "observation"), obs) 
+                td.set("state", state)
+                td.set(("next", "agents","observation"), next_obs)
+                td.set(("next", "state"), next_state)
+                td.set(("next", "reward"), reward * torch.ones(1))
+                td.set(("next", "done"), (terminated) * torch.ones(1, dtype = torch.bool))
+                td.set(("next", "terminated"), (terminated) * torch.ones(1, dtype = torch.bool))
+                td.set(("next", "mask"), torch.BoolTensor(avail_actions).to(device))
+                
+                qmix_vdn_agent.replay_buffer.extend(td.reshape(-1))
+                i += 1
+                loss = 0.0
+                if e >= 50:
+                    subdata = qmix_vdn_agent.replay_buffer.sample()
+                    loss_vals = qmix_vdn_agent.loss_module(subdata)
+                    loss_value = loss_vals["loss"]
+                    loss += loss_value.item()
+                    loss_value.backward()
+                    clip_grad_norm_(qmix_vdn_agent.loss_module.parameters(), 10)
+                    optim.step()
+                    optim.zero_grad()
+
+                episode_reward += reward
+                if loss is not None:
+                    losses.append(loss)
+
+                if (i) % target_update_interval == 0:
+                    qmix_vdn_agent.target_net_updater.step()
+
+                    
+            avg_loss = np.mean(losses) if losses else 0.0
+
+            # ---------- SAVE REWARDS ----------
+            print(f"Episode {e}: total_reward = {episode_reward}, avg_loss = {avg_loss}")
+            with open(rewards_file, 'a') as file:
+                file.write(f"{episode_reward}\n")
+            # ---------- SAVE LOSS ----------
+            with open(loss_file, 'a') as file:
+                file.write(f"{avg_loss}\n")
+            # -------------------------------
+
+        # Save model
+        checkpoint_path = config["training"].get("checkpoint_path", "checkpoints/")
+        os.makedirs(checkpoint_path, exist_ok = True)
+        model_save_path = os.path.join(checkpoint_path, f"{alg}_checkpoint.pt")
+        qmix_vdn_agent.save(model_save_path)
+        print(f"Model saved to {model_save_path}")
+
     else:
         raise ValueError(f"Unknown algorithm: {alg}")
     
-    losses = read_results(f"{alg}_loss.txt")
-    rewards = read_results(f"{alg}_rewards.txt")
+    losses = read_results(f"results/{alg}_loss.txt")
+    rewards = read_results(f"results/{alg}_rewards.txt")
     plot_results(losses, rewards, alg)
 
     env.close()
@@ -147,7 +242,7 @@ def plot_results(loss_values, reward_values, alg):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"{alg}_loss.png")
+        plt.savefig(f"results/{alg}_loss.png")
         plt.close()
 
     if reward_values:
@@ -160,5 +255,5 @@ def plot_results(loss_values, reward_values, alg):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"{alg}_reward.png")
+        plt.savefig(f"results/{alg}_reward.png")
         plt.close()

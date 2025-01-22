@@ -6,6 +6,7 @@ env:
     team_gen:
       dist_type: weighted_teams
       unit_types: ["marine", "marauder", "medivac"]
+      # unit_types: ["stalker", "zealot", "colossus"]
       exception_unit_types: ["medivac"]
       weights: [1.0, 0.0, 0.0]
       observe: true
@@ -16,6 +17,7 @@ env:
       map_x: 32
       map_y: 32
   map_name: "10gen_terran"
+  # map_name: "10gen_protoss"
   debug: true
   conic_fov: false
   obs_own_pos: true
@@ -23,16 +25,25 @@ env:
   min_attack_range: 2
 
 agent:
-  # QMIX parameters
-  learning_rate: 0.0005
-  discount_factor: 0.99
-  # ...
+  obs_dim: -1                   # Dimension of the flattened observation (obtained from SMACv2 env)
+  state_dim: -1                 # Dimension of the flattened state (obtained from SMACv2 env)
+  n_actions: -1                 # Number of possible discrete actions (obtained from SMACv2 env)
+  n_agents: -1                  # Number of agents (obtained from SMACv2 env)
+  learning_rate: 0.0001         # Learning rate for the optimizer
+  gamma: 0.99                   # Discount factor
+  epsilon_start: 0.5            # Initial epsilon for epsilon-greedy policy
+  epsilon_end: 0.05             # Final epsilon after decay
+  epsilon_decay: 250000         # Steps over which epsilon is decayed (avg_steps * n_episodes/2)
+  buffer_size: 5000             # Max size of the replay buffer
+  batch_size: 256               # Batch size for training
+  target_update_interval: 100   # Number of steps after which weights are copied to the target network
+  device: "cuda"                # "cpu" or "cuda" for GPU
 
 training:
-  episodes: 100
+  episodes: 10000
+  checkpoint_path: "checkpoints/"
   # ...
 
 evaluation:
   episodes: 100
   # ...
-  

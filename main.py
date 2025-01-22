@@ -1,5 +1,4 @@
 import argparse
-import sys
 
 from scripts.run_experiment import run_experiment
 from scripts.evaluate import evaluate
