@@ -145,7 +145,8 @@ def run_experiment(alg: str, config_path: str):
                 # env.render(None)
                 avail_actions = env.get_avail_actions()
                 td.set("mask", torch.BoolTensor(avail_actions).to(device))
-                actions = qmix_vdn_agent.qnet_explore(td)["agents"]["action"]
+                with torch.no_grad():
+                    actions = qmix_vdn_agent.qnet_explore(td)["agents"]["action"]
                 reward, terminated, a = env.step(actions)
                 next_obs = torch.tensor(np.array(env.get_obs())).to(device)
                 next_state = torch.tensor(np.array(env.get_state())).to(device)
