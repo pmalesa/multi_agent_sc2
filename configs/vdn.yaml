@@ -1,23 +1,25 @@
 env:
   # SMACv2 environment configuration params
   distribution_config:
-    n_units: 5
-    n_enemies: 5
+    n_units: 10
+    n_enemies: 10
     team_gen:
       dist_type: weighted_teams
-      unit_types: ["marine", "marauder", "medivac"]
-      # unit_types: ["stalker", "zealot", "colossus"]
+      # unit_types: ["marine", "marauder", "medivac"]
+      unit_types: ["stalker", "zealot", "colossus"]
+      # unit_types: ["zergling", "hydralisk", "baneling"]
       exception_unit_types: ["medivac"]
       weights: [1.0, 0.0, 0.0]
       observe: true
     start_positions:
       dist_type: surrounded_and_reflect
       p: 0.5
-      n_enemies: 5
+      n_enemies: 10
       map_x: 32
       map_y: 32
-  map_name: "10gen_terran"
-  # map_name: "10gen_protoss"
+  # map_name: "10gen_terran"
+  map_name: "10gen_protoss"
+  # map_name: "10gen_zerg"
   debug: true
   conic_fov: false
   obs_own_pos: true
@@ -30,7 +32,7 @@ agent:
   n_actions: -1                 # Number of possible discrete actions (obtained from SMACv2 env)
   n_agents: -1                  # Number of agents (obtained from SMACv2 env)
   learning_rate: 0.0001         # Learning rate for the optimizer
-  gamma: 0.99                   # Discount factor
+  gamma: 0.9                   # Discount factor
   epsilon_start: 0.5            # Initial epsilon for epsilon-greedy policy
   epsilon_end: 0.05             # Final epsilon after decay
   epsilon_decay: 250000         # Steps over which epsilon is decayed (avg_steps * n_episodes/2)

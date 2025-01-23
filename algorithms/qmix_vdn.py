@@ -46,11 +46,11 @@ class QMIX_VDN:
         self.qnet_explore = TensorDictSequential(
             self.qnet,
             EGreedyModule(
-                eps_init=1.0,
+                eps_init=0.5,
                 eps_end=0.05,
                 action_key=("agents", "action"),
                 spec=Categorical(env_settings["n_actions"]),
-                annealing_num_steps=3000/2*50,
+                annealing_num_steps=250000,
                 action_mask_key="mask",
             ),
         )
@@ -79,7 +79,7 @@ class QMIX_VDN:
             raise ValueError("Mixer type not in the example")
 
         self.replay_buffer = TensorDictReplayBuffer(
-            storage=LazyTensorStorage(50000, device=alg_settings["device"]),
+            storage=LazyTensorStorage(5000, device=alg_settings["device"]),
             sampler=SamplerWithoutReplacement(),
             batch_size=alg_settings["minibatch"],
         )
@@ -92,7 +92,7 @@ class QMIX_VDN:
             global_value="chosen_action_value",
             action=("agents", "action"),
         )
-        self.loss_module.make_value_estimator(ValueEstimators.TD0, gamma=alg_settings["gamma"])
+        self.loss_module.make_value_estimator(ValueEstimators.TDLambda, gamma=alg_settings["gamma"], lmbda=0.4 )
         self.target_net_updater = SoftUpdate(self.loss_module, eps=1 - alg_settings["tau"])
 
     def save(self, path: str):

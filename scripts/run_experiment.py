@@ -18,8 +18,9 @@ def run_experiment(alg: str, config_path: str):
         config = yaml.safe_load(file)
 
     os.makedirs("results", exist_ok = True)
-    rewards_file = f"results/{alg}_rewards.txt"
-    loss_file = f"results/{alg}_loss.txt"
+    map_name = config["env"]["map_name"]
+    rewards_file = f"results/{alg}_rewards{map_name}.txt"
+    loss_file = f"results/{alg}_loss{map_name}.txt"
     with open(rewards_file, 'w') as file:
         pass
     with open(loss_file, 'w') as file:
@@ -96,7 +97,7 @@ def run_experiment(alg: str, config_path: str):
         # Save model
         checkpoint_path = config["training"].get("checkpoint_path", "checkpoints/")
         os.makedirs(checkpoint_path, exist_ok = True)
-        model_save_path = os.path.join(checkpoint_path, f"{alg}_checkpoint.pt")
+        model_save_path = os.path.join(checkpoint_path, f"{alg}_checkpoint{map_name}.pt")
         dqn_agent.save(model_save_path)
         print(f"Model saved to {model_save_path}")
 
@@ -166,7 +167,7 @@ def run_experiment(alg: str, config_path: str):
                     loss_value = loss_vals["loss"]
                     loss += loss_value.item()
                     loss_value.backward()
-                    clip_grad_norm_(qmix_vdn_agent.loss_module.parameters(), 10)
+                    clip_grad_norm_(qmix_vdn_agent.loss_module.parameters(), 1)
                     optim.step()
                     optim.zero_grad()
 
@@ -176,7 +177,7 @@ def run_experiment(alg: str, config_path: str):
 
                 if (i) % target_update_interval == 0:
                     qmix_vdn_agent.target_net_updater.step()
-
+                torch.cuda.empty_cache()
                     
             avg_loss = np.mean(losses) if losses else 0.0
 
@@ -192,16 +193,16 @@ def run_experiment(alg: str, config_path: str):
         # Save model
         checkpoint_path = config["training"].get("checkpoint_path", "checkpoints/")
         os.makedirs(checkpoint_path, exist_ok = True)
-        model_save_path = os.path.join(checkpoint_path, f"{alg}_checkpoint.pt")
+        model_save_path = os.path.join(checkpoint_path, f"{alg}_checkpoint{map_name}.pt")
         qmix_vdn_agent.save(model_save_path)
         print(f"Model saved to {model_save_path}")
 
     else:
         raise ValueError(f"Unknown algorithm: {alg}")
     
-    losses = read_results(f"results/{alg}_loss.txt")
-    rewards = read_results(f"results/{alg}_rewards.txt")
-    plot_results(losses, rewards, alg)
+    losses = read_results(f"results/{alg}_loss{map_name}.txt")
+    rewards = read_results(f"results/{alg}_rewards{map_name}.txt")
+    plot_results(losses, rewards, alg, map_name)
 
     env.close()
     print("Training complete.")
@@ -231,7 +232,7 @@ def read_results(file_path: str):
 
     return values
 
-def plot_results(loss_values, reward_values, alg):
+def plot_results(loss_values, reward_values, alg, map_name):
     if loss_values:
         plt.figure(figsize = (12, 6))
         x_loss = np.arange(1, len(loss_values) + 1)
@@ -242,7 +243,7 @@ def plot_results(loss_values, reward_values, alg):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"results/{alg}_loss.png")
+        plt.savefig(f"results/{alg}_loss{map_name}.png")
         plt.close()
 
     if reward_values:
@@ -255,5 +256,5 @@ def plot_results(loss_values, reward_values, alg):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"results/{alg}_reward.png")
+        plt.savefig(f"results/{alg}_reward{map_name}.png")
         plt.close()

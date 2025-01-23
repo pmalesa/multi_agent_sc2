@@ -30,7 +30,7 @@ agent:
   n_actions: -1                 # Number of possible discrete actions (obtained from SMACv2 env)
   n_agents: -1                  # Number of agents (obtained from SMACv2 env)
   learning_rate: 0.0001         # Learning rate for the optimizer
-  gamma: 0.99                   # Discount factor
+  gamma: 0.90                   # Discount factor
   epsilon_start: 0.5            # Initial epsilon for epsilon-greedy policy
   epsilon_end: 0.05             # Final epsilon after decay
   epsilon_decay: 250000         # Steps over which epsilon is decayed (avg_steps * n_episodes/2)
