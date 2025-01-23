@@ -18,7 +18,7 @@ env:
       map_y: 32
   map_name: "10gen_terran"
   # map_name: "10gen_protoss"
-  debug: true
+  debug: false
   conic_fov: false
   obs_own_pos: true
   use_unit_ranges: true
@@ -42,8 +42,6 @@ agent:
 training:
   episodes: 10000
   checkpoint_path: "checkpoints/"
-  # ...
 
 evaluation:
   episodes: 100
-  # ...

@@ -29,7 +29,7 @@ python main.py train --alg <algorithm> # dqn vdn or qmix
 
 ## Run evaluation
 ```bash
-python main.py test --alg <algorithm> # dqn vdn or qmix 
+python main.py test --alg <algorithm> --checkpoint <checkpoint_path>
 ```
 
 ## Virtual Environment Removal

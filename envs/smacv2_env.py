@@ -6,7 +6,7 @@ logging.set_verbosity(logging.DEBUG)
 
 def make_smacv2_env(distribution_config = None,
                     map_name = "10gen_terran",
-                    debug = True,
+                    debug = False,
                     conic_fov = False,
                     obs_own_pos = True,
                     use_unit_ranges = True,

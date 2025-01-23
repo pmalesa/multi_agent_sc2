@@ -1,6 +1,5 @@
 import yaml
 import numpy as np
-import time
 import os
 import torch
 import matplotlib.pyplot as plt
@@ -8,7 +7,6 @@ import matplotlib.pyplot as plt
 from envs.smacv2_env import make_smacv2_env
 from algorithms.dqn import DQNAgent
 from algorithms.qmix_vdn import QMIX_VDN
-from absl import logging
 from tensordict import TensorDict
 from torch.nn.utils import clip_grad_norm_
 
@@ -19,8 +17,8 @@ def run_experiment(alg: str, config_path: str):
 
     os.makedirs("results", exist_ok = True)
     map_name = config["env"]["map_name"]
-    rewards_file = f"results/{alg}_rewards{map_name}.txt"
-    loss_file = f"results/{alg}_loss{map_name}.txt"
+    rewards_file = f"results/{alg}_rewards_{map_name}.txt"
+    loss_file = f"results/{alg}_loss_{map_name}.txt"
     with open(rewards_file, 'w') as file:
         pass
     with open(loss_file, 'w') as file:
@@ -52,7 +50,7 @@ def run_experiment(alg: str, config_path: str):
             losses = []
 
             while not done:
-                obs = env.get_obs()         # shape: [n_agents, observation_length]
+                obs = env.get_obs() # shape: [n_agents, observation_length]
                 aggregated_obs = np.concatenate(obs, axis = 0)
                 state = env.get_state()     
                 aggregated_obs = np.concatenate([state, aggregated_obs], axis = 0)
@@ -77,7 +75,7 @@ def run_experiment(alg: str, config_path: str):
                 # Store experience
                 dqn_agent.store_experience(aggregated_obs, actions, reward, aggregated_next_obs, done)
 
-                # Update the agent after each episode
+                # Start updating the DQN after 50th episode
                 if episode > 50:
                     loss = dqn_agent.update()
                     if loss is not None:
@@ -97,13 +95,12 @@ def run_experiment(alg: str, config_path: str):
         # Save model
         checkpoint_path = config["training"].get("checkpoint_path", "checkpoints/")
         os.makedirs(checkpoint_path, exist_ok = True)
-        model_save_path = os.path.join(checkpoint_path, f"{alg}_checkpoint{map_name}.pt")
+        model_save_path = os.path.join(checkpoint_path, f"{alg}_checkpoint_{map_name}.pt")
         dqn_agent.save(model_save_path)
         print(f"Model saved to {model_save_path}")
 
     elif alg in ["vdn", "qmix"]: 
         env_info = env.get_env_info()
-        n_actions = env_info["n_actions"]
         n_agents = env_info["n_agents"]
         lr = config["agent"]["learning_rate"]
         batch_size = config["agent"]["batch_size"]
@@ -194,15 +191,15 @@ def run_experiment(alg: str, config_path: str):
         # Save model
         checkpoint_path = config["training"].get("checkpoint_path", "checkpoints/")
         os.makedirs(checkpoint_path, exist_ok = True)
-        model_save_path = os.path.join(checkpoint_path, f"{alg}_checkpoint{map_name}.pt")
+        model_save_path = os.path.join(checkpoint_path, f"{alg}_checkpoint_{map_name}.pt")
         qmix_vdn_agent.save(model_save_path)
         print(f"Model saved to {model_save_path}")
 
     else:
         raise ValueError(f"Unknown algorithm: {alg}")
     
-    losses = read_results(f"results/{alg}_loss{map_name}.txt")
-    rewards = read_results(f"results/{alg}_rewards{map_name}.txt")
+    losses = read_results(f"results/{alg}_loss_{map_name}.txt")
+    rewards = read_results(f"results/{alg}_rewards_{map_name}.txt")
     plot_results(losses, rewards, alg, map_name)
 
     env.close()
@@ -244,7 +241,7 @@ def plot_results(loss_values, reward_values, alg, map_name):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"results/{alg}_loss{map_name}.png")
+        plt.savefig(f"results/{alg}_loss_{map_name}.png")
         plt.close()
 
     if reward_values:
@@ -257,5 +254,5 @@ def plot_results(loss_values, reward_values, alg, map_name):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"results/{alg}_reward{map_name}.png")
+        plt.savefig(f"results/{alg}_reward_{map_name}.png")
         plt.close()

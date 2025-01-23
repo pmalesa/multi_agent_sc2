@@ -7,6 +7,7 @@ env:
       dist_type: weighted_teams
       unit_types: ["marine", "marauder", "medivac"]
       # unit_types: ["stalker", "zealot", "colossus"]
+      # unit_types: ["zergling", "hydralisk", "baneling"]
       exception_unit_types: ["medivac"]
       weights: [1.0, 0.0, 0.0]
       observe: true
@@ -18,7 +19,8 @@ env:
       map_y: 32
   map_name: "10gen_terran"
   # map_name: "10gen_protoss"
-  debug: true
+  # map_name: "10gen_zerg"
+  debug: false
   conic_fov: false
   obs_own_pos: true
   use_unit_ranges: true
@@ -42,8 +44,6 @@ agent:
 training:
   episodes: 10000
   checkpoint_path: "checkpoints/"
-  # ...
 
 evaluation:
-  episodes: 100
-  # ...
+  episodes: 10
