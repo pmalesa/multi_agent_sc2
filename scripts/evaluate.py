@@ -57,7 +57,7 @@ def evaluate(alg: str, config_path: str, checkpoint_path: str):
                 episode_reward += reward
                 rewards.append(episode_reward)
 
-                if info["battle_won"] == True:
+                if info.get("battle_won", False) == True:
                     total_wins += 1
 
                 # Aggregate next observations
@@ -74,7 +74,7 @@ def evaluate(alg: str, config_path: str, checkpoint_path: str):
         lr = config["agent"]["learning_rate"]
         batch_size = config["agent"]["batch_size"]
         gamma = config["agent"]["gamma"]
-        n_episodes = config["training"]["episodes"]
+        n_episodes = config["evaluation"]["episodes"]
         epsilon_start = config["agent"]["epsilon_start"]
         epsilon_end = config["agent"]["epsilon_end"]
         epsilon_decay = config["agent"]["epsilon_decay"]
@@ -135,6 +135,8 @@ def evaluate(alg: str, config_path: str, checkpoint_path: str):
 
                 episode_reward += reward
                 torch.cuda.empty_cache()
+
+            print(f"[EVALUATION] Episode {e}: {episode_reward}")
     else:
         raise ValueError(f"Unknown algorithm: {alg}")
     
