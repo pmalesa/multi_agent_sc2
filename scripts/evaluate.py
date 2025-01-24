@@ -71,11 +71,20 @@ def evaluate(alg: str, config_path: str, checkpoint_path: str):
     elif alg in ["vdn", "qmix"]: 
         env_info = env.get_env_info()
         n_agents = env_info["n_agents"]
+        lr = config["agent"]["learning_rate"]
         batch_size = config["agent"]["batch_size"]
         gamma = config["agent"]["gamma"]
-        n_episodes = config["evaluation"]["episodes"]
-
-        alg_settings = {"device" : device, "alg": alg, "minibatch": batch_size, "gamma": gamma, "tau": 0.005}
+        n_episodes = config["training"]["episodes"]
+        epsilon_start = config["agent"]["epsilon_start"]
+        epsilon_end = config["agent"]["epsilon_end"]
+        epsilon_decay = config["agent"]["epsilon_decay"]
+        buffer_size = config["agent"]["buffer_size"]
+        lmbda = config["agent"]["lmbda"]
+        alg_settings = {"device" : device, "alg": alg, "minibatch": batch_size,
+                        "gamma": gamma, "tau": 0.005,
+                        "epsilon_start": epsilon_start, "epsilon_end": epsilon_end,
+                        "epsilon_decay": epsilon_decay, "buffer_size": buffer_size,
+                        "lmbda": lmbda}
         qmix_vdn_agent = QMIX_VDN(env_info, alg_settings)
         qmix_vdn_agent.load(checkpoint_path)
 
