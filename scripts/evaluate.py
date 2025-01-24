@@ -119,7 +119,7 @@ def evaluate(alg: str, config_path: str, checkpoint_path: str):
                 reward, terminated, info = env.step(actions)
 
                 rewards.append(episode_reward)
-                if info["battle_won"] == True:
+                if info.get("battle_won", False) == True:
                     total_wins += 1
 
                 next_obs = torch.tensor(np.array(env.get_obs())).to(device)
