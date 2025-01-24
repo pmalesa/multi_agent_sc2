@@ -106,7 +106,7 @@ def evaluate(alg: str, config_path: str, checkpoint_path: str):
                 avail_actions = env.get_avail_actions()
                 td.set("mask", torch.BoolTensor(avail_actions).to(device))
                 with torch.no_grad():
-                    actions = qmix_vdn_agent.qnet_explore(td)["agents"]["action"]
+                    actions = qmix_vdn_agent.qnet(td)["agents"]["action"]
                 reward, terminated, info = env.step(actions)
 
                 rewards.append(episode_reward)

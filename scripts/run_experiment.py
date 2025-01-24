@@ -107,8 +107,17 @@ def run_experiment(alg: str, config_path: str):
         gamma = config["agent"]["gamma"]
         target_update_interval = config["agent"]["target_update_interval"]
         n_episodes = config["training"]["episodes"]
+        epsilon_start = config["agent"]["epsilon_start"]
+        epsilon_end = config["agent"]["epsilon_end"]
+        epsilon_decay = config["agent"]["epsilon_decay"]
+        buffer_size = config["agent"]["buffer_size"]
+        lmbda = config["agent"]["lmbda"]
 
-        alg_settings = {"device" : device, "alg": alg, "minibatch": batch_size, "gamma": gamma, "tau": 0.005}
+        alg_settings = {"device" : device, "alg": alg, "minibatch": batch_size,
+                        "gamma": gamma, "tau": 0.005,
+                        "epsilon_start": epsilon_start, "epsilon_end": epsilon_end,
+                        "epsilon_decay": epsilon_decay, "buffer_size": buffer_size,
+                        "lmbda": lmbda}
         qmix_vdn_agent = QMIX_VDN(env_info, alg_settings)
 
         optim = torch.optim.Adam(qmix_vdn_agent.loss_module.parameters(), lr)

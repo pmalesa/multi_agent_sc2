@@ -2,12 +2,12 @@ env:
   # SMACv2 environment configuration params
   distribution_config:
     n_units: 10
-    n_enemies: 10
+    n_enemies: 13
     team_gen:
       dist_type: weighted_teams
       # unit_types: ["marine", "marauder", "medivac"]
-      unit_types: ["stalker", "zealot", "colossus"]
-      # unit_types: ["zergling", "hydralisk", "baneling"]
+      # unit_types: ["stalker", "zealot", "colossus"]
+      unit_types: ["zergling", "hydralisk", "baneling"]
       exception_unit_types: ["medivac"]
       weights: [1.0, 0.0, 0.0]
       observe: true
@@ -18,8 +18,8 @@ env:
       map_x: 32
       map_y: 32
   # map_name: "10gen_terran"
-  map_name: "10gen_protoss"
-  # map_name: "10gen_zerg"
+  # map_name: "10gen_protoss"
+  map_name: "10gen_zerg"
   debug: false
   conic_fov: false
   obs_own_pos: true
@@ -40,6 +40,7 @@ agent:
   batch_size: 256               # Batch size for training
   target_update_interval: 100   # Number of steps after which weights are copied to the target network
   device: "cuda"                # "cpu" or "cuda" for GPU
+  lmbda: 0.4
 
 training:
   episodes: 10000

@@ -1,24 +1,26 @@
 env:
   # SMACv2 environment configuration params
   distribution_config:
-    n_units: 5
-    n_enemies: 5
+    n_units: 10
+    n_enemies: 13
     team_gen:
       dist_type: weighted_teams
-      unit_types: ["marine", "marauder", "medivac"]
+      # unit_types: ["marine", "marauder", "medivac"]
       # unit_types: ["stalker", "zealot", "colossus"]
+      unit_types: ["zergling", "hydralisk", "baneling"]
       exception_unit_types: ["medivac"]
       weights: [1.0, 0.0, 0.0]
       observe: true
     start_positions:
       dist_type: surrounded_and_reflect
       p: 0.5
-      n_enemies: 5
+      n_enemies: 13
       map_x: 32
       map_y: 32
-  map_name: "10gen_terran"
+  # map_name: "10gen_terran"
   # map_name: "10gen_protoss"
-  debug: false
+  map_name: "10gen_zerg"
+  debug: true
   conic_fov: false
   obs_own_pos: true
   use_unit_ranges: true
@@ -37,11 +39,14 @@ agent:
   buffer_size: 5000             # Max size of the replay buffer
   batch_size: 256               # Batch size for training
   target_update_interval: 100   # Number of steps after which weights are copied to the target network
-  device: "cuda"                # "cpu" or "cuda" for GPU
+  device: "cuda"               # "cpu" or "cuda" for GPU
+  lmbda: 0.4
 
 training:
   episodes: 10000
   checkpoint_path: "checkpoints/"
+  # ...
 
 evaluation:
   episodes: 100
+  # ...
